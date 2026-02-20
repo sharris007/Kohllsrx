@@ -103,7 +103,10 @@ export default function Home() {
           onAddQuestion={() => handleAddQuestion()}
           questionCallbacks={questionCallbacks}
         />
-        <PropertiesPanel selectedQuestion={questions.find((q) => q.id === selectedQuestionId)} />
+        <PropertiesPanel
+          selectedQuestion={questions.find((q) => q.id === selectedQuestionId)}
+          onUpdateQuestion={handleUpdateQuestion}
+        />
       </MainArea>
     </AppLayout>
   );

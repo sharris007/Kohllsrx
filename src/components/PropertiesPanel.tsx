@@ -269,16 +269,263 @@ const PanelWrapper = styled.div`
   flex-direction: column;
 `;
 
+const SectionHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+`;
+
+const SectionTitle = styled.span`
+  font-size: 14px;
+  font-weight: 600;
+  color: ${theme.colors.text};
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const SectionIcons = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const IconBtn = styled.button`
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: ${theme.colors.textMuted};
+  cursor: pointer;
+  border-radius: 4px;
+  &:hover {
+    background: ${theme.colors.backgroundLight};
+    color: ${theme.colors.text};
+  }
+`;
+
+const ChoicesTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid ${theme.colors.border};
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 13px;
+`;
+
+const ChoicesThead = styled.thead`
+  background: ${theme.colors.backgroundLight};
+  th {
+    text-align: left;
+    padding: 10px 12px;
+    font-weight: 600;
+    color: ${theme.colors.text};
+    border-bottom: 1px solid ${theme.colors.border};
+  }
+`;
+
+const ChoicesTbody = styled.tbody`
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid ${theme.colors.borderLight};
+    vertical-align: middle;
+  }
+  tr:last-child td {
+    border-bottom: none;
+  }
+`;
+
+const DragHandleCell = styled.td`
+  width: 32px;
+  cursor: grab;
+  color: ${theme.colors.textMuted};
+`;
+
+const DragHandleDots = () => (
+  <span style={{ display: 'inline-grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+    {[1, 2, 3, 4, 5, 6].map((i) => (
+      <span key={i} style={{ width: 4, height: 4, borderRadius: '50%', background: theme.colors.textMuted }} />
+    ))}
+  </span>
+);
+
+const PencilIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+);
+
+const TrashIconSmall = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <polyline points="3 6 5 6 21 6"/>
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+    <line x1="10" y1="11" x2="10" y2="17"/>
+    <line x1="14" y1="11" x2="14" y2="17"/>
+  </svg>
+);
+
+const SortIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <line x1="8" y1="6" x2="21" y2="6"/>
+    <line x1="8" y1="12" x2="21" y2="12"/>
+    <line x1="8" y1="18" x2="21" y2="18"/>
+    <circle cx="4" cy="6" r="1.5"/>
+    <circle cx="4" cy="12" r="1.5"/>
+    <circle cx="4" cy="18" r="1.5"/>
+  </svg>
+);
+
+const PlusCircleIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="16"/>
+    <line x1="8" y1="12" x2="16" y2="12"/>
+  </svg>
+);
+
+const HelpCircleIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+    <path d="M12 17h.01"/>
+  </svg>
+);
+
+const TextCell = styled.td`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  .choice-actions {
+    opacity: 0.6;
+    display: flex;
+    gap: 4px;
+  }
+  &:hover .choice-actions {
+    opacity: 1;
+  }
+`;
+
 interface PropertiesPanelProps {
   selectedQuestion?: Question | null;
+  onUpdateQuestion?: (id: string, updates: Partial<Question>) => void;
 }
 
-export default function PropertiesPanel({ selectedQuestion }: PropertiesPanelProps) {
+function ChoicesPanel({
+  question,
+  onUpdateQuestion,
+}: {
+  question: Question;
+  onUpdateQuestion?: (id: string, updates: Partial<Question>) => void;
+}) {
+  const choices = question.options ?? ['Item 1', 'Item 2', 'Item 3'];
+
+  const handleAddChoice = () => {
+    const next = [...choices, `Item ${choices.length + 1}`];
+    onUpdateQuestion?.(question.id, { options: next });
+  };
+
+  const handleDeleteChoice = (index: number) => {
+    if (choices.length <= 1) return;
+    const next = choices.filter((_, i) => i !== index);
+    onUpdateQuestion?.(question.id, { options: next });
+  };
+
+  return (
+    <>
+      <PropertyGroup>
+        <SectionHeader>
+          <SectionTitle>
+            Choices
+            <span style={{ color: theme.colors.textMuted, cursor: 'help', display: 'inline-flex' }}><HelpCircleIcon /></span>
+          </SectionTitle>
+          <SectionIcons>
+            <IconBtn type="button" title="Bulk Edit">
+              <PencilIcon />
+            </IconBtn>
+            <IconBtn type="button" title="Sort">
+              <SortIcon />
+            </IconBtn>
+            <IconBtn type="button" title="Add New Choice" onClick={handleAddChoice}>
+              <PlusCircleIcon />
+            </IconBtn>
+          </SectionIcons>
+        </SectionHeader>
+        <ChoicesTable>
+          <ChoicesThead>
+            <tr>
+              <th style={{ width: 32 }}></th>
+              <th>Value</th>
+              <th>Text</th>
+            </tr>
+          </ChoicesThead>
+          <ChoicesTbody>
+            {choices.map((choice, idx) => (
+              <tr key={`${choice}-${idx}`}>
+                <DragHandleCell>
+                  <DragHandleDots />
+                </DragHandleCell>
+                <td>{choice}</td>
+                <TextCell as="td">
+                  <span style={{ flex: 1 }}>{choice}</span>
+                  <span className="choice-actions">
+                    <IconBtn type="button" title="Edit">
+                      <PencilIcon />
+                    </IconBtn>
+                    <IconBtn type="button" title="Delete" onClick={() => handleDeleteChoice(idx)}>
+                      <TrashIconSmall />
+                    </IconBtn>
+                  </span>
+                </TextCell>
+              </tr>
+            ))}
+          </ChoicesTbody>
+        </ChoicesTable>
+        <Label style={{ marginBottom: 8 }}>
+          Copy choices from the following question
+        </Label>
+        <Select style={{ marginBottom: 16 }}>
+          <option>Select a question...</option>
+        </Select>
+        <Label style={{ marginBottom: 8 }}>Choice order</Label>
+        <Select style={{ marginBottom: 16 }}>
+          <option>None</option>
+        </Select>
+        <CheckboxWrapper>
+          <Checkbox />
+          Enable the &quot;Other&quot; option
+          <HelpIconBtn>?</HelpIconBtn>
+        </CheckboxWrapper>
+        <CheckboxWrapper>
+          <Checkbox />
+          Enable the &quot;None&quot; option
+        </CheckboxWrapper>
+        <CheckboxWrapper>
+          <Checkbox />
+          Show the Clear button
+        </CheckboxWrapper>
+        <CheckboxWrapper>
+          <Checkbox />
+          Separate special choices
+          <HelpIconBtn>?</HelpIconBtn>
+        </CheckboxWrapper>
+      </PropertyGroup>
+    </>
+  );
+}
+
+export default function PropertiesPanel({ selectedQuestion, onUpdateQuestion }: PropertiesPanelProps) {
+  const isRadioGroup = selectedQuestion?.type === 'radiogroup';
+
   return (
     <Panel>
       <PanelHeader>
         <HeaderText>
-          <h3>General</h3>
+          <h3>{isRadioGroup ? 'Choices' : 'General'}</h3>
           <span>{selectedQuestion ? selectedQuestion.name : 'Survey'}</span>
         </HeaderText>
         <BackBtn>
@@ -294,6 +541,9 @@ export default function PropertiesPanel({ selectedQuestion }: PropertiesPanelPro
       <PanelWrapper>
         <PropertiesList>
           {selectedQuestion ? (
+            isRadioGroup ? (
+              <ChoicesPanel question={selectedQuestion} onUpdateQuestion={onUpdateQuestion} />
+            ) : (
             <>
               <PropertyGroup>
                 <Label>
@@ -339,6 +589,7 @@ export default function PropertiesPanel({ selectedQuestion }: PropertiesPanelPro
                 </CheckboxWrapper>
               </PropertyGroup>
             </>
+            )
           ) : (
             <>
               <PropertyGroup>
