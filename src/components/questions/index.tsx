@@ -3,6 +3,7 @@
 import styled from 'styled-components';
 import { theme } from '@/styles/theme';
 import { MinusCircleIcon, PlusCircleIcon, DuplicateIcon, RequiredIcon, TrashIcon, ChevronDownIcon } from '../icons';
+import { TYPE_TO_LABEL } from '@/lib/questionMapping';
 import type { Question } from '@/types/survey';
 
 export interface QuestionCallbacks {
@@ -374,6 +375,57 @@ const FooterActionBtn = styled.button<{ $active?: boolean }>`
   ${({ $active }) => $active && `color: ${theme.colors.primary};`}
 `;
 
+function QuestionFooterBar({
+  q,
+  callbacks,
+}: {
+  q: Question;
+  callbacks?: QuestionCallbacks;
+}) {
+  const label = TYPE_TO_LABEL[q.type] ?? q.type;
+  return (
+    <QuestionFooter>
+      <QuestionTypeBtn type="button" onClick={(e) => e.stopPropagation()}>
+        {label}
+        <ChevronDownIcon size={14} />
+      </QuestionTypeBtn>
+      <FooterActions>
+        <FooterActionBtn
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            callbacks?.onDuplicateQuestion(q.id);
+          }}
+        >
+          <DuplicateIcon size={14} />
+          Duplicate
+        </FooterActionBtn>
+        <FooterActionBtn
+          type="button"
+          $active={q.required}
+          onClick={(e) => {
+            e.stopPropagation();
+            callbacks?.onUpdateQuestion(q.id, { required: !q.required });
+          }}
+        >
+          <RequiredIcon size={14} />
+          Required
+        </FooterActionBtn>
+        <FooterActionBtn
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            callbacks?.onDeleteQuestion(q.id);
+          }}
+        >
+          <TrashIcon size={14} />
+          Delete
+        </FooterActionBtn>
+      </FooterActions>
+    </QuestionFooter>
+  );
+}
+
 function RadioGroupQuestion({
   q,
   selected,
@@ -445,66 +497,51 @@ function RadioGroupQuestion({
           </RadioOptionRow>
         ))}
       </div>
-      <QuestionFooter>
-        <QuestionTypeBtn type="button" onClick={(e) => e.stopPropagation()}>
-          Radio Button Group
-          <ChevronDownIcon size={14} />
-        </QuestionTypeBtn>
-        <FooterActions>
-          <FooterActionBtn
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              callbacks?.onDuplicateQuestion(q.id);
-            }}
-          >
-            <DuplicateIcon size={14} />
-            Duplicate
-          </FooterActionBtn>
-          <FooterActionBtn
-            type="button"
-            $active={q.required}
-            onClick={(e) => {
-              e.stopPropagation();
-              callbacks?.onUpdateQuestion(q.id, { required: !q.required });
-            }}
-          >
-            <RequiredIcon size={14} />
-            Required
-          </FooterActionBtn>
-          <FooterActionBtn
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              callbacks?.onDeleteQuestion(q.id);
-            }}
-          >
-            <TrashIcon size={14} />
-            Delete
-          </FooterActionBtn>
-        </FooterActions>
-      </QuestionFooter>
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function RatingQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+const RatingOptionSquare = styled.label`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid ${theme.colors.border};
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  &:has(input:checked) {
+    background: ${theme.colors.primary};
+    border-color: ${theme.colors.primary};
+    color: white;
+  }
+`;
+
+function RatingQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   return (
     <QuestionCard $selected={selected}>
-      <QuestionTitle>{q.title}</QuestionTitle>
+      <TitleInput
+        value={q.title}
+        readOnly
+        style={{ marginBottom: 12, cursor: 'default' }}
+      />
       <RatingScale>
         {[1, 2, 3, 4, 5].map((n) => (
-          <RatingOption key={n}>
+          <RatingOptionSquare key={n}>
             <input type="radio" name={`rating-${q.id}`} value={n} style={{ display: 'none' }} />
             {n}
-          </RatingOption>
+          </RatingOptionSquare>
         ))}
       </RatingScale>
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function SliderQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function SliderQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title}</QuestionTitle>
@@ -519,27 +556,63 @@ function SliderQuestion({ q, selected }: { q: Question; selected?: boolean }) {
         </SliderMarks>
         <SliderInput min={0} max={100} defaultValue={50} />
       </SliderTrack>
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function CheckboxQuestion({ q, selected }: { q: Question; selected?: boolean }) {
-  const options = ['Select All', ...defaultOptions];
+function CheckboxQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
+  const opts = q.options ?? defaultOptions;
+  const options = opts[0] === 'Select All' ? opts : ['Select All', ...opts];
+  const showDeleteIcon = (i: number) => i < 3;
+  const showAddIcon = (i: number) => i >= options.length - Math.min(3, options.length);
+
+  const handleDeleteOption = (index: number) => {
+    if (options.length <= 1) return;
+    const next = options.filter((_, i) => i !== index);
+    callbacks?.onUpdateQuestion(q.id, { options: next });
+  };
+
+  const handleAddBefore = (index: number) => {
+    const newItem = `Item ${options.length + 1}`;
+    const next = [...options.slice(0, index), newItem, ...options.slice(index)];
+    callbacks?.onUpdateQuestion(q.id, { options: next });
+  };
+
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title}</QuestionTitle>
-      {options.map((opt) => (
-        <CheckboxLabel key={opt}>
-          <CheckboxInput name={`${q.id}-${opt}`} value={opt} />
-          {opt}
-          {opt === 'Other (describe)' && <TextInput placeholder="" style={{ marginLeft: 8, flex: 1, maxWidth: 200 }} />}
-        </CheckboxLabel>
+      {options.map((opt, idx) => (
+        <RadioOptionRow key={`${opt}-${idx}`}>
+          <OptionIconBtn
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (showDeleteIcon(idx)) handleDeleteOption(idx);
+              else if (showAddIcon(idx)) handleAddBefore(idx);
+            }}
+          >
+            {showDeleteIcon(idx) ? (
+              <MinusCircleIcon color="#e74c3c" size={20} />
+            ) : showAddIcon(idx) ? (
+              <PlusCircleIcon color={theme.colors.primary} size={20} />
+            ) : (
+              <span style={{ width: 20, height: 20, flexShrink: 0 }} />
+            )}
+          </OptionIconBtn>
+          <CheckboxLabel style={{ flex: 1, margin: 0 }}>
+            <CheckboxInput name={`${q.id}-${opt}`} value={opt} />
+            {opt}
+            {opt === 'Other (describe)' && <TextInput placeholder="" style={{ marginLeft: 8, flex: 1, maxWidth: 200 }} onClick={(e) => e.stopPropagation()} />}
+          </CheckboxLabel>
+        </RadioOptionRow>
       ))}
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function DropdownQuestion({ q, selected, multi }: { q: Question; selected?: boolean; multi?: boolean }) {
+function DropdownQuestion({ q, selected, multi, callbacks }: { q: Question; selected?: boolean; multi?: boolean; callbacks?: QuestionCallbacks }) {
   const options = q.options ?? defaultOptions;
   return (
     <QuestionCard $selected={selected}>
@@ -552,11 +625,12 @@ function DropdownQuestion({ q, selected, multi }: { q: Question; selected?: bool
           </option>
         ))}
       </SelectInput>
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function BooleanQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function BooleanQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title}</QuestionTitle>
@@ -566,11 +640,12 @@ function BooleanQuestion({ q, selected }: { q: Question; selected?: boolean }) {
           Yes
         </YesNoBtn>
       </YesNoButtons>
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function FileQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function FileQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title}</QuestionTitle>
@@ -579,11 +654,12 @@ function FileQuestion({ q, selected }: { q: Question; selected?: boolean }) {
         <br />
         <DropZoneButton type="button">Select File</DropZoneButton>
       </DropZone>
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function ImagePickerQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function ImagePickerQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title}</QuestionTitle>
@@ -592,45 +668,80 @@ function ImagePickerQuestion({ q, selected }: { q: Question; selected?: boolean 
         <br />
         <DropZoneButton type="button">Choose Image</DropZoneButton>
       </DropZone>
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function RankingQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function RankingQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   const items = q.options ?? ['Item 1', 'Item 2', 'Item 3', 'Item 4'];
+  const showDeleteIcon = (i: number) => i < 3;
+  const showAddIcon = (i: number) => i >= items.length - Math.min(3, items.length);
+
+  const handleDeleteItem = (index: number) => {
+    if (items.length <= 1) return;
+    const next = items.filter((_, i) => i !== index);
+    callbacks?.onUpdateQuestion(q.id, { options: next });
+  };
+
+  const handleAddBefore = (index: number) => {
+    const newItem = `Item ${items.length + 1}`;
+    const next = [...items.slice(0, index), newItem, ...items.slice(index)];
+    callbacks?.onUpdateQuestion(q.id, { options: next });
+  };
+
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title}</QuestionTitle>
-      {items.map((item) => (
-        <RankingItem key={item}>
+      {items.map((item, idx) => (
+        <RankingItem key={`${item}-${idx}`}>
+          <OptionIconBtn
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (showDeleteIcon(idx)) handleDeleteItem(idx);
+              else if (showAddIcon(idx)) handleAddBefore(idx);
+            }}
+          >
+            {showDeleteIcon(idx) ? (
+              <MinusCircleIcon color="#e74c3c" size={18} />
+            ) : showAddIcon(idx) ? (
+              <PlusCircleIcon color={theme.colors.primary} size={18} />
+            ) : (
+              <span style={{ width: 18, height: 18, flexShrink: 0 }} />
+            )}
+          </OptionIconBtn>
           <RankingHandle>⋮⋮</RankingHandle>
-          {item}
-          <RankingRemove type="button">×</RankingRemove>
+          <span style={{ flex: 1 }}>{item}</span>
+          <RankingRemove type="button" onClick={(e) => { e.stopPropagation(); handleDeleteItem(idx); }}>×</RankingRemove>
         </RankingItem>
       ))}
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function TextQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function TextQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title}</QuestionTitle>
       <TextInput placeholder="" />
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function CommentQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function CommentQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title}</QuestionTitle>
       <TextAreaInput placeholder="" />
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function MultipleTextQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function MultipleTextQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   const fields = q.options ?? ['text1', 'text2'];
   return (
     <QuestionCard $selected={selected}>
@@ -641,60 +752,67 @@ function MultipleTextQuestion({ q, selected }: { q: Question; selected?: boolean
           <TextInput placeholder="" />
         </MultipleTextRow>
       ))}
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function PanelQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function PanelQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title || 'Panel'}</QuestionTitle>
       <QuestionDescription>Add questions inside this panel</QuestionDescription>
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function HtmlQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function HtmlQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title}</QuestionTitle>
       <div style={{ fontSize: 13, color: theme.colors.textMuted }}>HTML content</div>
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function ExpressionQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function ExpressionQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title}</QuestionTitle>
       <div style={{ fontSize: 13, color: theme.colors.textMuted }}>Expression (read-only)</div>
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function ImageQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function ImageQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title}</QuestionTitle>
       <div style={{ color: theme.colors.textMuted, fontSize: 13 }}>Image placeholder</div>
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function SignatureQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function SignatureQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title}</QuestionTitle>
       <SignaturePad />
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
 
-function MatrixQuestion({ q, selected }: { q: Question; selected?: boolean }) {
+function MatrixQuestion({ q, selected, callbacks }: { q: Question; selected?: boolean; callbacks?: QuestionCallbacks }) {
   return (
     <QuestionCard $selected={selected}>
       <QuestionTitle>{q.title}</QuestionTitle>
       <div style={{ color: theme.colors.textMuted, fontSize: 13 }}>Matrix question</div>
+      <QuestionFooterBar q={q} callbacks={callbacks} />
     </QuestionCard>
   );
 }
@@ -713,44 +831,44 @@ export function QuestionComponent({
     case 'radiogroup':
       return <RadioGroupQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'rating':
-      return <RatingQuestion q={q} selected={selected} />;
+      return <RatingQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'slider':
-      return <SliderQuestion q={q} selected={selected} />;
+      return <SliderQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'checkbox':
-      return <CheckboxQuestion q={q} selected={selected} />;
+      return <CheckboxQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'dropdown':
-      return <DropdownQuestion q={q} selected={selected} />;
+      return <DropdownQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'dropdown-multi':
-      return <DropdownQuestion q={q} selected={selected} multi />;
+      return <DropdownQuestion q={q} selected={selected} multi callbacks={callbacks} />;
     case 'boolean':
-      return <BooleanQuestion q={q} selected={selected} />;
+      return <BooleanQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'file':
-      return <FileQuestion q={q} selected={selected} />;
+      return <FileQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'imagepicker':
-      return <ImagePickerQuestion q={q} selected={selected} />;
+      return <ImagePickerQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'ranking':
-      return <RankingQuestion q={q} selected={selected} />;
+      return <RankingQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'text':
-      return <TextQuestion q={q} selected={selected} />;
+      return <TextQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'comment':
-      return <CommentQuestion q={q} selected={selected} />;
+      return <CommentQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'multipletext':
-      return <MultipleTextQuestion q={q} selected={selected} />;
+      return <MultipleTextQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'panel':
     case 'paneldynamic':
-      return <PanelQuestion q={q} selected={selected} />;
+      return <PanelQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'matrix':
     case 'matrixdropdown':
     case 'matrixdynamic':
-      return <MatrixQuestion q={q} selected={selected} />;
+      return <MatrixQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'html':
-      return <HtmlQuestion q={q} selected={selected} />;
+      return <HtmlQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'expression':
-      return <ExpressionQuestion q={q} selected={selected} />;
+      return <ExpressionQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'image':
-      return <ImageQuestion q={q} selected={selected} />;
+      return <ImageQuestion q={q} selected={selected} callbacks={callbacks} />;
     case 'signature':
-      return <SignatureQuestion q={q} selected={selected} />;
+      return <SignatureQuestion q={q} selected={selected} callbacks={callbacks} />;
     default:
       return <QuestionCard $selected={selected}><QuestionTitle>{q.title}</QuestionTitle></QuestionCard>;
   }

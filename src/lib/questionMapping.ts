@@ -1,5 +1,30 @@
 import type { QuestionType } from '@/types/survey';
 
+export const TYPE_TO_LABEL: Record<QuestionType, string> = {
+  radiogroup: 'Radio Button Group',
+  rating: 'Rating Scale',
+  slider: 'Slider',
+  checkbox: 'Checkboxes',
+  dropdown: 'Dropdown',
+  'dropdown-multi': 'Multi-Select Dropdown',
+  boolean: 'Yes/No (Boolean)',
+  file: 'File Upload',
+  imagepicker: 'Image Picker',
+  ranking: 'Ranking',
+  text: 'Single-Line Input',
+  comment: 'Long Text',
+  multipletext: 'Multiple Textboxes',
+  panel: 'Panel',
+  paneldynamic: 'Dynamic Panel',
+  matrix: 'Single-Select Matrix',
+  matrixdropdown: 'Multi-Select Matrix',
+  matrixdynamic: 'Dynamic Matrix',
+  html: 'HTML',
+  expression: 'Expression (read-only)',
+  image: 'Image',
+  signature: 'Signature',
+};
+
 export const LABEL_TO_TYPE: Record<string, QuestionType> = {
   'Radio Button Group': 'radiogroup',
   'Rating Scale': 'rating',

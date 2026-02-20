@@ -35,8 +35,11 @@ function createQuestion(label: string, index: number): Question {
   if (type === 'multipletext') {
     base.options = ['text1', 'text2'];
   }
-  if (type === 'radiogroup' || type === 'checkbox' || type === 'dropdown' || type === 'dropdown-multi' || type === 'ranking') {
+  if (type === 'radiogroup' || type === 'dropdown' || type === 'dropdown-multi' || type === 'ranking') {
     base.options = ['Item 1', 'Item 2', 'Item 3', 'Item 4', 'None', 'Other (describe)'];
+  }
+  if (type === 'checkbox') {
+    base.options = ['Select All', 'Item 1', 'Item 2', 'Item 3', 'Item 4', 'None', 'Other (describe)'];
   }
   return base;
 }
